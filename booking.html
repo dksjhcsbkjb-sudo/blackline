@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACKLINE — Онлайн-запись</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="booking-body">
+
+<div class="booking-page">
+
+    <section class="booking-left">
+        <a href="index.html" class="booking-logo">
+            BLACKLINE<span>.</span>
+        </a>
+
+        <div class="booking-intro">
+            <p>BARBERSHOP • YAROSLAVL</p>
+            <h1>ТВОЙ СТИЛЬ.<br>ТВОИ ПРАВИЛА.</h1>
+            <a href="index.html" class="back-home">← НА ГЛАВНУЮ</a>
+        </div>
+    </section>
+
+    <section class="booking-right">
+
+        <p class="booking-label">ОНЛАЙН-ЗАПИСЬ</p>
+
+        <div class="booking-progress">
+            <span class="active"></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <div class="booking-content">
+
+            <div class="booking-screen active-screen" id="step-1">
+                <h2>Выберите филиал</h2>
+                <p>Где вам будет удобно?</p>
+
+                <button class="choice-card" data-branch="Центр">
+                    Центр <span>→</span>
+                </button>
+
+                <button class="choice-card" data-branch="Север">
+                    Север <span>→</span>
+                </button>
+
+                <button class="choice-card" data-branch="Юг">
+                    Юг <span>→</span>
+                </button>
+            </div>
+
+            <div class="booking-screen" id="step-2">
+                <h2>Выберите барбера</h2>
+                <p>Кто будет создавать ваш образ?</p>
+
+                <button class="choice-card" data-master="Максим">
+                    Максим <span>→</span>
+                </button>
+
+                <button class="choice-card" data-master="Саня">
+                    Саня <span>→</span>
+                </button>
+            </div>
+
+            <div class="booking-screen" id="step-3">
+                <h2>Выберите услуги</h2>
+                <p>Можно выбрать несколько услуг</p>
+
+                <div class="service-options">
+
+                    <button class="choice-card service-option"
+                        data-service="Мужская стрижка"
+                        data-price="1500"
+                        data-duration="45">
+                        <span>Мужская стрижка</span>
+                        <strong>1 500 ₽</strong>
+                        <small>45 минут</small>
+                    </button>
+
+                    <button class="choice-card service-option"
+                        data-service="Стрижка машинкой"
+                        data-price="900"
+                        data-duration="30">
+                        <span>Стрижка машинкой</span>
+                        <strong>900 ₽</strong>
+                        <small>30 минут</small>
+                    </button>
+
+                    <button class="choice-card service-option"
+                        data-service="Оформление бороды"
+                        data-price="800"
+                        data-duration="30">
+                        <span>Оформление бороды</span>
+                        <strong>800 ₽</strong>
+                        <small>30 минут</small>
+                    </button>
+
+                </div>
+
+                <div class="service-summary">
+                    <h3 id="selected-count">Выбрано: 0 услуг</h3>
+                    <p id="selected-details">Выберите услуги выше</p>
+                    <p class="summary-total" id="selected-total">
+                        0 ₽ • 0 минут
+                    </p>
+                </div>
+
+                <button id="continue-services" class="main-btn" disabled>
+                    ПРОДОЛЖИТЬ →
+                </button>
+            </div>
+
+            <div class="booking-screen" id="step-4">
+                <h2>Выберите дату и время</h2>
+                <p>Когда вам удобно прийти?</p>
+
+                <input type="date" id="booking-date">
+
+                <div class="time-options">
+                    <button class="choice-card" data-time="10:00">10:00</button>
+                    <button class="choice-card" data-time="12:00">12:00</button>
+                    <button class="choice-card" data-time="14:00">14:00</button>
+                    <button class="choice-card" data-time="16:00">16:00</button>
+                </div>
+
+                <div class="service-summary">
+                    <p id="final-summary">Ваш выбор появится здесь</p>
+                </div>
+
+                <div class="client-form">
+                    <h3>Ваши данные</h3>
+
+                    <input
+                        type="text"
+                        id="client-name"
+                        placeholder="Ваше имя"
+                        autocomplete="name"
+                    >
+
+                    <input
+                        type="tel"
+                        id="client-phone"
+                        placeholder="+7 (999) 123-45-67"
+                        autocomplete="tel"
+                    >
+
+                    <button id="confirm-booking" class="main-btn" disabled>
+                        ПОДТВЕРДИТЬ ЗАПИСЬ
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <button id="back-button" hidden>
+            ← НАЗАД
+        </button>
+
+    </section>
+</div>
+
+<!-- Скрытая форма для Netlify -->
+<form name="blackline-booking"
+      method="POST"
+      data-netlify="true"
+      netlify-honeypot="bot-field"
+      hidden>
+
+    <input type="hidden" name="form-name" value="blackline-booking">
+
+    <input name="bot-field">
+
+    <input name="branch">
+    <input name="master">
+    <input name="services">
+    <input name="date">
+    <input name="time">
+    <input name="name">
+    <input name="phone">
+    <input name="price">
+    <input name="duration">
+</form>
+
+<script src="script.js"></script>
+</body>
+</html>

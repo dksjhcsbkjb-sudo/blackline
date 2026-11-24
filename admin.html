@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLACKLINE — Admin</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101010;color:#fff;font-family:Arial,sans-serif}
+header{padding:24px 7%;border-bottom:1px solid #292929;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:25px;font-weight:900;letter-spacing:3px}
+.logo span{color:#c6a46a}
+.admin-label{color:#c6a46a;font-size:12px;letter-spacing:2px}
+main{max-width:1200px;margin:45px auto;padding:0 22px}
+h1{font-size:34px;margin-bottom:8px}
+.subtitle{color:#888}
+.panel,.stat{background:#191919;border:1px solid #303030;border-radius:14px;padding:22px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0}
+.stat p{color:#888;margin:0 0 12px}
+.stat strong{font-size:30px;color:#c6a46a}
+input,select,button{font:inherit}
+input,select{background:#111;color:white;border:1px solid #383838;border-radius:9px;padding:13px;width:100%;outline:none}
+button{background:#c6a46a;color:#111;border:0;border-radius:9px;padding:13px 20px;font-weight:bold;cursor:pointer}
+button:hover{background:#dfbd80}
+.login{max-width:420px;margin:90px auto}
+.login input{margin:15px 0}
+.error{color:#ff7777;margin-top:12px}
+.toolbar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin:20px 0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:750px}
+th,td{text-align:left;padding:15px 12px;border-bottom:1px solid #303030;font-size:14px}
+th{color:#c6a46a}
+.muted{color:#888}
+.message{padding:30px;text-align:center;color:#aaa}
+.hidden{display:none!important}
+.logout{background:#292929;color:white}
+@media(max-width:700px){.stats{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}h1{font-size:27px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">BLACKLINE<span>.</span></div>
+ <div class="admin-label">ADMIN PANEL</div>
+</header>
+
+<main>
+ <section id="login" class="login panel">
+  <h1>Вход в систему</h1>
+  <p class="subtitle">BLACKLINE — Панель управления</p>
+  <form id="login-form">
+   <input id="password" type="password" placeholder="Пароль администратора" required>
+   <button type="submit" style="width:100%">ВОЙТИ</button>
+  </form>
+  <p id="login-error" class="error"></p>
+ </section>
+
+ <section id="dashboard" class="hidden">
+  <h1>Панель управления</h1>
+  <p class="subtitle">Управление онлайн-записями BLACKLINE</p>
+  <button class="logout" id="logout">Выйти</button>
+
+  <section class="stats">
+   <div class="stat"><p>Всего записей</p><strong id="total">—</strong></div>
+   <div class="stat"><p>Сегодня</p><strong id="today">—</strong></div>
+   <div class="stat"><p>Филиалы</p><strong>3</strong></div>
+  </section>
+
+  <section class="panel">
+   <h2>Записи клиентов</h2>
+   <div class="toolbar">
+    <input id="search" placeholder="Поиск по имени или телефону">
+    <select id="branch"><option value="">Все филиалы</option></select>
+    <select id="master"><option value="">Все барберы</option></select>
+   </div>
+   <p id="status" class="muted">Загрузка записей...</p>
+   <div class="table-wrap">
+    <table>
+     <thead><tr>
+      <th>Клиент</th><th>Телефон</th><th>Филиал</th>
+      <th>Барбер</th><th>Услуги</th><th>Дата</th>
+      <th>Время</th><th>Цена</th>
+     </tr></thead>
+     <tbody id="rows"></tbody>
+    </table>
+   </div>
+  </section>
+ </section>
+</main>
+
+<script>
+const login = document.getElementById("login");
+const dashboard = document.getElementById("dashboard");
+const passwordInput = document.getElementById("password");
+const loginError = document.getElementById("login-error");
+const rows = document.getElementById("rows");
+
+let bookings = [];
+let adminPassword = "";
+
+document.getElementById("login-form").addEventListener("submit", async (event) => {
+ event.preventDefault();
+ adminPassword = passwordInput.value;
+ loginError.textContent = "Проверяем пароль...";
+ await loadBookings(true);
+});
+
+document.getElementById("logout").addEventListener("click", () => {
+ adminPassword = "";
+ bookings = [];
+ rows.replaceChildren();
+ dashboard.classList.add("hidden");
+ login.classList.remove("hidden");
+ passwordInput.value = "";
+ loginError.textContent = "";
+});
+
+async function loadBookings(showLoginError = false) {
+ try {
+  const response = await fetch("/.netlify/functions/bookings", {
+   headers: { Authorization: "Bearer " + adminPassword },
+   cache: "no-store"
+  });
+
+  if (response.status === 401) {
+   loginError.textContent = "Неверный пароль.";
+   adminPassword = "";
+   return;
+  }
+
+  if (!response.ok) throw new Error("Ошибка сервера: " + response.status);
+
+  const result = await response.json();
+  bookings = result.bookings || [];
+
+  login.classList.add("hidden");
+  dashboard.classList.remove("hidden");
+  renderBookings();
+ } catch (error) {
+  loginError.textContent = "Не удалось подключиться. Проверь публикацию функции Netlify.";
+  if (!showLoginError) {
+   document.getElementById("status").textContent = error.message;
+  }
+ }
+}
+
+function value(data, key) {
+ return String(data?.[key] ?? "");
+}
+
+function renderBookings() {
+ const search = document.getElementById("search").value.toLowerCase();
+ const branch = document.getElementById("branch").value;
+ const master = document.getElementById("master").value;
+
+ const normalized = bookings.map(item => ({
+  item,
+  data: item.data || {}
+ }));
+
+ const branches = [...new Set(normalized.map(x => value(x.data,"branch")).filter(Boolean))];
+ const masters = [...new Set(normalized.map(x => value(x.data,"master")).filter(Boolean))];
+
+ fillSelect("branch", "Все филиалы", branches, branch);
+ fillSelect("master", "Все барберы", masters, master);
+
+ const filtered = normalized.filter(({data}) => {
+  const text = [
+   value(data,"name"), value(data,"phone"),
+   value(data,"services"), value(data,"branch")
+  ].join(" ").toLowerCase();
+
+  return text.includes(search)
+   && (!branch || value(data,"branch") === branch)
+   && (!master || value(data,"master") === master);
+ });
+
+ document.getElementById("total").textContent = bookings.length;
+ const today = new Date().toISOString().slice(0,10);
+ document.getElementById("today").textContent =
+  normalized.filter(x => value(x.data,"date") === today).length;
+
+ document.getElementById("status").textContent =
+  "Найдено записей: " + filtered.length;
+
+ rows.replaceChildren();
+
+ filtered.forEach(({item,data}) => {
+  const tr = document.createElement("tr");
+  [
+   "name","phone","branch","master","services","date","time","price"
+  ].forEach(key => {
+   const td = document.createElement("td");
+   td.textContent = value(data,key) || "—";
+   tr.appendChild(td);
+  });
+  rows.appendChild(tr);
+ });
+}
+
+function fillSelect(id, first, values, selected) {
+ const select = document.getElementById(id);
+ const current = selected;
+ select.replaceChildren(new Option(first,""));
+ values.forEach(value => select.add(new Option(value,value)));
+ select.value = current;
+}
+
+["search","branch","master"].forEach(id => {
+ document.getElementById(id).addEventListener("input", renderBookings);
+ document.getElementById(id).addEventListener("change", renderBookings);
+});
+</script>
+</body>
+</html>
