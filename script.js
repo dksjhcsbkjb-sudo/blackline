@@ -28,7 +28,8 @@ const selectedDetails = document.getElementById("selected-details");
 const selectedTotal = document.getElementById("selected-total");
 const finalSummary = document.getElementById("final-summary");
 
-// Показ нужного шага
+const timeButtons = document.querySelectorAll("[data-time]");
+
 function showStep(step) {
     currentStep = step;
 
@@ -43,27 +44,30 @@ function showStep(step) {
     backButton.hidden = step === 1;
 }
 
-// Выбор филиала
+function selectCard(selector, selectedButton) {
+    document.querySelectorAll(selector).forEach(button => {
+        button.classList.remove("selected");
+    });
+
+    selectedButton.classList.add("selected");
+}
+
 document.querySelectorAll("[data-branch]").forEach(button => {
     button.addEventListener("click", () => {
         bookingData.branch = button.dataset.branch;
-
         selectCard("[data-branch]", button);
         showStep(2);
     });
 });
 
-// Выбор мастера
 document.querySelectorAll("[data-master]").forEach(button => {
     button.addEventListener("click", () => {
         bookingData.master = button.dataset.master;
-
         selectCard("[data-master]", button);
         showStep(3);
     });
 });
 
-// Выбор услуг
 document.querySelectorAll(".service-option").forEach(button => {
     button.addEventListener("click", () => {
         const name = button.dataset.service;
@@ -82,16 +86,6 @@ document.querySelectorAll(".service-option").forEach(button => {
     });
 });
 
-// Выделение выбранной карточки
-function selectCard(selector, selectedButton) {
-    document.querySelectorAll(selector).forEach(button => {
-        button.classList.remove("selected");
-    });
-
-    selectedButton.classList.add("selected");
-}
-
-// Обновление информации об услугах
 function updateServiceSummary() {
     let totalPrice = 0;
     let totalDuration = 0;
@@ -102,45 +96,99 @@ function updateServiceSummary() {
     });
 
     selectedCount.textContent = selectedServices.size;
+    selectedDetails.textContent = selectedServices.size
+        ? `${totalDuration} мин`
+        : "Услуги не выбраны";
 
-    selectedDetails.textContent =
-        selectedServices.size > 0
-            ? `${totalDuration} мин`
-            : "Услуги не выбраны";
-
-    selectedTotal.textContent = `${totalPrice.toLocaleString("ru-RU")} ₽`;
+    selectedTotal.textContent =
+        `${totalPrice.toLocaleString("ru-RU")} ₽`;
 
     continueButton.disabled = selectedServices.size === 0;
 }
 
-// Переход к выбору даты
 continueButton.addEventListener("click", () => {
-    if (selectedServices.size === 0) return;
+    if (!selectedServices.size) return;
 
     showStep(4);
     updateFinalSummary();
+    updateTimeButtons();
 });
 
-// Минимальная дата — сегодня
-if (dateInput) {
-    const today = new Date();
-    const localDate = new Date(
-        today.getTime() - today.getTimezoneOffset() * 60000
-    ).toISOString().split("T")[0];
-
-    dateInput.min = localDate;
+function getToday() {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Moscow",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
 }
 
-// Выбор времени
-document.querySelectorAll("[data-time]").forEach(button => {
+function getMoscowMinutes() {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Moscow",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(new Date());
+
+    const values = Object.fromEntries(
+        parts.map(part => [part.type, part.value])
+    );
+
+    return Number(values.hour) * 60 + Number(values.minute);
+}
+
+dateInput.min = getToday();
+
+function updateTimeButtons() {
+    const selectedDate = dateInput.value;
+    const today = getToday();
+    const nowMinutes = getMoscowMinutes();
+
+    timeButtons.forEach(button => {
+        const [hours, minutes] = button.dataset.time.split(":").map(Number);
+        const slotMinutes = hours * 60 + minutes;
+
+        const expired =
+            !selectedDate ||
+            selectedDate < today ||
+            (selectedDate === today && slotMinutes <= nowMinutes);
+
+        button.disabled = expired;
+
+        if (expired) {
+            button.classList.remove("selected");
+
+            if (bookingData.time === button.dataset.time) {
+                bookingData.time = "";
+            }
+        }
+    });
+
+    validateForm();
+}
+
+dateInput.addEventListener("change", () => {
+    bookingData.date = dateInput.value;
+    bookingData.time = "";
+
+    document.querySelectorAll("[data-time]").forEach(button => {
+        button.classList.remove("selected");
+    });
+
+    updateTimeButtons();
+});
+
+timeButtons.forEach(button => {
     button.addEventListener("click", () => {
+        if (button.disabled) return;
+
         bookingData.time = button.dataset.time;
         selectCard("[data-time]", button);
         validateForm();
     });
 });
 
-// Обновление итоговой информации
 function updateFinalSummary() {
     const services = Array.from(selectedServices.keys()).join(", ");
 
@@ -160,7 +208,6 @@ function updateFinalSummary() {
         `Стоимость: ${totalPrice.toLocaleString("ru-RU")} ₽`;
 }
 
-// Проверка заполнения
 function validateForm() {
     const phone = phoneInput.value.replace(/\D/g, "");
 
@@ -168,23 +215,33 @@ function validateForm() {
         nameInput.value.trim().length >= 2 &&
         phone.length >= 10 &&
         dateInput.value &&
-        bookingData.time;
+        dateInput.value >= getToday() &&
+        bookingData.time &&
+        selectedServices.size > 0;
 
     confirmButton.disabled = !valid;
 }
 
-[nameInput, phoneInput, dateInput].forEach(input => {
+[nameInput, phoneInput].forEach(input => {
     input.addEventListener("input", validateForm);
-    input.addEventListener("change", validateForm);
 });
 
-// Отправка заявки через Netlify Forms
 confirmButton.addEventListener("click", async () => {
     if (confirmButton.disabled) return;
 
     bookingData.name = nameInput.value.trim();
     bookingData.phone = phoneInput.value.trim();
     bookingData.date = dateInput.value;
+
+    if (
+        bookingData.date < getToday() ||
+        (bookingData.date === getToday() &&
+         timeToMinutes(bookingData.time) <= getMoscowMinutes())
+    ) {
+        alert("Это время уже прошло. Выбери другое.");
+        updateTimeButtons();
+        return;
+    }
 
     let totalPrice = 0;
     let totalDuration = 0;
@@ -196,54 +253,58 @@ confirmButton.addEventListener("click", async () => {
 
     const services = Array.from(selectedServices.keys()).join(", ");
 
-    const formData = new URLSearchParams();
-
-    formData.append("form-name", "blackline-booking");
-    formData.append("branch", bookingData.branch);
-    formData.append("master", bookingData.master);
-    formData.append("services", services);
-    formData.append("date", bookingData.date);
-    formData.append("time", bookingData.time);
-    formData.append("name", bookingData.name);
-    formData.append("phone", bookingData.phone);
-    formData.append("price", String(totalPrice));
-    formData.append("duration", String(totalDuration));
-
     confirmButton.disabled = true;
     confirmButton.textContent = "Отправляем...";
 
     try {
-        const response = await fetch("/booking.html", {
+        const response = await fetch("/.netlify/functions/create-booking", {
             method: "POST",
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/json"
             },
-            body: formData.toString()
+            body: JSON.stringify({
+                branch: bookingData.branch,
+                master: bookingData.master,
+                services,
+                date: bookingData.date,
+                time: bookingData.time,
+                name: bookingData.name,
+                phone: bookingData.phone,
+                price: totalPrice,
+                duration: totalDuration
+            })
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-            throw new Error("Ошибка отправки заявки");
+            throw new Error(result.error || "Ошибка отправки");
         }
 
         alert("Заявка успешно отправлена!");
-
         confirmButton.textContent = "Заявка отправлена";
-    } catch (error) {
-        alert("Не удалось отправить заявку. Попробуй ещё раз.");
 
-        confirmButton.textContent = "Подтвердить запись";
+    } catch (error) {
+        alert(error.message || "Не удалось отправить заявку");
+
+        confirmButton.textContent = "ПОДТВЕРДИТЬ ЗАПИСЬ";
         validateForm();
     }
 });
 
-// Кнопка назад
+function timeToMinutes(value) {
+    if (!/^\d{2}:\d{2}$/.test(value || "")) return -1;
+
+    const [hours, minutes] = value.split(":").map(Number);
+    return hours * 60 + minutes;
+}
+
 backButton.addEventListener("click", () => {
     if (currentStep > 1) {
         showStep(currentStep - 1);
     }
 });
 
-// Запуск
 showStep(1);
 updateServiceSummary();
 validateForm();
