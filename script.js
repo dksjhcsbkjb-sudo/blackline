@@ -308,3 +308,4 @@ backButton.addEventListener("click", () => {
 showStep(1);
 updateServiceSummary();
 validateForm();
+
